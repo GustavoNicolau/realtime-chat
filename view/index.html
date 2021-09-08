@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat RealTime Go</title>
+    <style>
+        .content {
+            position: fixed;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background-color: white;
+            border-top: 1px solid lightseagreen;
+            padding: 5px 10px;
+        }
+
+        .initial-message,
+        .input-message,
+        .content button {
+            display: block;
+            margin-bottom: 1em;
+        }
+
+        .input-message {
+            padding: 1.4em;
+            border: 1px solid lightgray;
+            border-radius: 4px;
+            width: -webkit-fill-available;
+        }
+
+        .content button {
+            width: 100%;
+            color: white;
+            padding: 7px 10px;
+            border-radius: 4px;
+            background-color: #78b8ef;
+            border: 1px solid #5a9ed8;
+        }
+
+        .container {
+            margin-bottom: 50px;
+        }
+
+        .container p {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container"></div>
+
+    <div class="content">
+
+        <form onsubmit="app.SendMessage(); return false;">
+            <div class="initial-message">
+                <label>Hello <b class="nickname"></b>. Say something:</label>
+            </div>
+
+            <input class="input-message" placeholder="Your message">
+            <button type="submit"> Send</button>
+
+        </form>
+    </div>
+</body>
+<script type="text/javascript">
+    let app = {};
+    app.ws = null;
+    app.container = null;
+
+
+    app.print = (message) => {
+        let el = document.createElement("p");
+        el.innerHTML = message;
+        app.container.append(el);
+    }
+
+
+    app.SendMessage = () => {
+        let messageRaw = document.querySelector(".input-message").value
+        if (messageRaw === '') return;
+        app.ws.send(JSON.stringify({
+            Message: messageRaw
+        }));
+
+        let message = `<b>Me: </b> ${messageRaw}`;
+        app.print(message);
+        document.querySelector(`.input-message`).value = '';
+    }
+
+    app.init = () => {
+        if (!(window.WebSocket)) {
+            alert('Your browser does not support WebSocket');
+            return;
+        }
+
+        let name = prompt('Enter your nickname: ') || "No nickname";
+        document.querySelector('.nickname').innerText = name;
+        app.container = document.querySelector('.container');
+        app.ws = new WebSocket(`ws://localhost:8001/ws?nickname=${name}`);
+        app.ws.onopen = () => {
+            let message = '<b>me</b>: connected.';
+            app.print(message);
+        };
+
+        app.ws.onmessage = (event) => {
+            let res = JSON.parse(event.data)
+            let message = ''
+            console.log(res)
+            if (res.Type === 'New user...') {
+                message = `User <b> ${res.From} </b> Connected.`
+            } else if (res.Type === 'Exit') {
+                message = `User <b> ${res.From} </b> Disconnected.`
+            } else {
+                message = `<b> ${res.From} </b>: ${res.Message}`
+            }
+
+            app.print(message)
+        }
+
+        app.ws.onclose = () => {
+            let message = `<b>me</b>: Disconnected.`
+            app.print(message)
+        }
+    }
+
+    window.onload = app.init
+
+</script>
+
+</html>
